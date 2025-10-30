@@ -300,7 +300,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 
     if (user.coverImage) {
         try {
-            const oldCoverImagePublicId = user.avatar.split("/").pop().split(".")[0]
+            const oldCoverImagePublicId = user.coverImage.split("/").pop().split(".")[0]
             await deleteFromCloudinary(oldCoverImagePublicId)
         } catch (error) {
             throw new ApiError(400, "Error while cover image deleting from cloudinary")
