@@ -8,8 +8,92 @@ import {uploadOnCloudinary} from "../utils/cloudinary.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
-    //TODO: get all videos based on query, sort, pagination
+    const { page = 1, limit = 10, query, sortBy = "createdAt", sortType = "asc", userId } = req.query
+
+    const match = { isPublished: true };
+
+    if (query) {
+        match.$or = [
+            {
+                title: {
+                    $regex: query,
+                    $options: "i"
+                }
+            },
+            {
+                description: {
+                    $regex: query,
+                    $options: "i"
+                }
+            }
+        ]
+    }
+
+    if (userId) {
+        match.owner = new mongoose.Types.ObjectId(userId)
+    }
+
+    const sort = {};
+    sort[sortBy] = sortType === "asc" ? 1 : -1;
+
+    const pageNo = parseInt(page)
+    const limitNo = parseInt(limit)
+
+    const skip = (pageNo - 1) * limitNo
+
+    const totalVideos = await Video.countDocuments(match)
+
+    const allVideos = await Video.aggregate([
+        {
+            $match: match
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "owner",
+                pipeline: [
+                    {
+                        $project: {
+                            fullName: 1,
+                            username: 1,
+                            avatar: 1
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                owner: {
+                    $first: "$owner"
+                }
+            }
+        },
+        {
+            $sort: sort
+        },
+        {
+            $skip: skip
+        },
+        {
+            $limit: limitNo
+        }
+    ])
+
+    return res.status(200).json(
+        new ApiResponse(
+            200,
+            {
+                currentPage: pageNo,
+                totalVideos,
+                totalPages: Math.ceil(totalVideos / limitNo),
+                data: allVideos
+            },
+            "All videos fetched"
+        )
+    )
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
