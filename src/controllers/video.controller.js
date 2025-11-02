@@ -4,7 +4,7 @@ import {User} from "../models/user.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {deleteFromCloudinary, uploadOnCloudinary} from "../utils/cloudinary.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -143,13 +143,78 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: get video by id
+    
+    if (!videoId) {
+        throw new ApiError(400, "No video selected")
+    }
+
+    const video = await Video.findById(videoId).populate(
+        "owner", "fullName username avatar"
+    )
+
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    return res.status(200).json(
+        new ApiResponse(200, video, "Video fetched successfully")
+    )
 })
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: update video details like title, description, thumbnail
+    
+    if (!videoId) {
+        throw new ApiError(400, "No video selected")
+    }
 
+    const video = await Video.findById(videoId)
+
+    if (!video) {
+        throw new ApiError(404, "Video not found");
+    }
+
+    const { title, description } = req.body
+
+    if (!title || !description) {
+        throw new ApiError(400, "Title or description is required")
+    }
+
+    const thumbnailLocalPath = req.file?.path
+
+    if (!thumbnailLocalPath) {
+        throw new ApiError(400, "Thumbnail is missing")
+    }
+
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+
+    if (!thumbnail.url) {
+        throw new ApiError(400, "Error while thumbnail is uploading on cloudinary")
+    }
+
+    if (video.thumbnail) {
+        try {
+            const oldThumbnail = video.thumbnail.split("/").pop().split(".")[0]
+            await deleteFromCloudinary(oldThumbnail)
+        } catch (error) {
+            throw new ApiError(400, "Error while thumbnail is deleting from cloudinary")
+        }
+    }
+
+    const updatedVideo = await Video.findByIdAndUpdate(
+        video._id,
+        {
+            $set: {
+                title,
+                description,
+                thumbnail: thumbnail.url
+            }
+        }, { new: true }
+    )
+
+    return res.status(200).json(
+        new ApiResponse(200, updatedVideo, "Video details updated successfully")
+    )
 })
 
 const deleteVideo = asyncHandler(async (req, res) => {
