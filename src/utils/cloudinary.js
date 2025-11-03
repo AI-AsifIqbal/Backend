@@ -28,7 +28,9 @@ const deleteFromCloudinary = async (publicId) => {
     if (!publicId) return null
 
     try {
-        const response = await cloudinary.uploader.destroy(publicId)
+        const response = await cloudinary.uploader.destroy(publicId, {
+            resource_type: "auto"
+        })
         return response
     } catch (error) {
         return null
