@@ -7,9 +7,8 @@ import {
     deleteComment
 } from "../controllers/comment.controller.js";
 
-const router = new Router();
-
-router.use(verifyJWT);
+const router = new Router()
+router.use(verifyJWT)
 
 router.route("/:videoId")
     .get(getAllComments)

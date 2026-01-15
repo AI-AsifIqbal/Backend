@@ -8,10 +8,9 @@ import {
     togglePublishStatus,
     updateVideo,
 } from "../controllers/video.controller.js";
-import { upload } from "../middlewares/multer.middleware.js"
+import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router()
-
 router.use(verifyJWT)
 
 router.route("/").get(getAllVideos)
